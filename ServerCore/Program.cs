@@ -13,8 +13,22 @@ namespace Program
 
         static void Main(string[] args)
         {
+            // 최소 실행 쓰레드
+            ThreadPool.SetMinThreads(1, 1);
+
+            // 최대 실행 쓰레드
+            ThreadPool.SetMaxThreads(5, 5);
+
+            for (int i = 0; i < 5; i++)
+                ThreadPool.QueueUserWorkItem((obj) => {  while (true) { } });
+
             // ThreadPool 테스트 -> background로 실행
             ThreadPool.QueueUserWorkItem(MainThread);
+
+            while (true)
+            {
+
+            }
 
             /** 기본 쓰레드 사용
                 Thread t = new Thread(MainThread);
