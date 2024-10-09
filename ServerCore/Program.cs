@@ -5,20 +5,40 @@ namespace Program
 {
     class Program
     {
-        static volatile int x = 0;
-        static volatile int y = 0;
-        static volatile int r1 = 0;
-        static volatile int r2 = 0;
+        // 메모리 배리어 -> 멀티 쓰레드 환경에서 발생하는 순서의 가시성(인식)을 늘려 뒤바뀜 문제 해결
+        // A) 코드 재배치 억제 -> Memory Barrier
+        // B) 가시성 -> Volatile
+
+        // 1) Full Memory Barrier - (ASM : MFENCE, C#: Thread.MemoryBarrier) : Store/Load가 모두 재배치 되지 않도록 한다.
+        // 2) Store Memory Barrier - (ASM : SFENCE) : Store만 재배치 되지 않도록 한다.
+        // 3) Load Memory Barrier - (ASM : LFENCE) : Load만 재배치 되지 않도록 한다.
+        // 가시성 -> 변수를 읽을 때 메모리에서 읽어오도록 한다.
+
+        // Store를 사용하면 물내림 작업 (Memory Barrier)를 사용
+        // Load를 사용하기 이전에 물내림 작업 (Memory Barrier)를 사용
+        // 즉, Store를 사용하면 최신화를 해주어야 하고
+        // Load 전에 최신화가 되었는지 확인해야 한다.
+
+        static int x = 0;
+        static int y = 0;
+        static int r1 = 0;
+        static int r2 = 0;
 
         static void Thread_1()
         {
             y = 1; // Store y
+
+            // 메모리 배리어
+            // y와 x 사이에 선을 그어 코드 재배치를 억제한다.
+            Thread.MemoryBarrier();
             r1 = x; // Load x
         }        
 
         static void Thread_2()
         {
             x = 1; // Store x
+
+            Thread.MemoryBarrier();
             r2 = y; // Load y
         }
 
