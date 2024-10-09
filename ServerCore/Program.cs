@@ -5,39 +5,67 @@ namespace Program
 {
     class Program
     {
-        // 전역으로 설정되어 모든 Thread 들이 사용 가능하다.
-        // volatile : 컴파일러가 최적화 하지 않도록 하는 키워드(휘발성)
-        // 즉, 최적화 하지 말고 있는 그대로 사용
-        // Realase 시점에서 최적화 하게 되면 정상적으로 작동하지 않을 수 있다.
-        volatile static bool _stop = false;
-
-        static void ThreadMain()
-        {
-            Console.WriteLine("쓰레드 시작!");
-
-            while (_stop == false)
-            {
-            }
-
-            Console.WriteLine("쓰레드 종료!");
-        }
 
         static void Main(string[] args)
         {
-            Task t = new Task(ThreadMain);
-            t.Start();
+            int[,] arr = new int[10000, 10000];
+            {
+                long now = DateTime.Now.Ticks;
+                for (int y = 0; y < 10000; y++)
+                    for (int x = 0; x < 10000; x++)
+                        arr[y, x] = 1;
 
-            // 1초동안 슬립
-            Thread.Sleep(1000);
+                long end = DateTime.Now.Ticks;
+                Console.WriteLine($"(y, x) 순서 걸린 시간 {end - now}");
+            }
 
-            _stop = true;
+            {
+                long now = DateTime.Now.Ticks;
+                for (int y = 0; y< 10000; y++)
+                    for (int x = 0; x< 10000; x++)
+                        arr[x, y] = 1;
 
-            Console.WriteLine("Stop 호출");
-            Console.WriteLine("종료 대기중");
-            t.Wait();
-
-            Console.WriteLine("종료 성공");
+                long end = DateTime.Now.Ticks;
+                Console.WriteLine($"(x, y) 순서 걸린 시간 {end - now}");
+            }
         }
+
+
+        /* 최적화로 인한 문제 해결 방안
+                // 전역으로 설정되어 모든 Thread 들이 사용 가능하다.
+                // volatile : 컴파일러가 최적화 하지 않도록 하는 키워드(휘발성)
+                // 즉, 최적화 하지 말고 있는 그대로 사용
+                // Realase 시점에서 최적화 하게 되면 정상적으로 작동하지 않을 수 있다.
+                volatile static bool _stop = false;
+
+                static void ThreadMain()
+                {
+                    Console.WriteLine("쓰레드 시작!");
+
+                    while (_stop == false)
+                    {
+                    }
+
+                    Console.WriteLine("쓰레드 종료!");
+                }
+
+                static void Main(string[] args)
+                {
+                    Task t = new Task(ThreadMain);
+                    t.Start();
+
+                    // 1초동안 슬립
+                    Thread.Sleep(1000);
+
+                    _stop = true;
+
+                    Console.WriteLine("Stop 호출");
+                    Console.WriteLine("종료 대기중");
+                    t.Wait();
+
+                    Console.WriteLine("종료 성공");
+                }
+        */
 
         /*   Thread, ThreadPool, Task 비교
                 static void MainThread(object state)
