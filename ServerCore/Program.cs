@@ -3,104 +3,64 @@ using System.Threading;
 
 namespace Program
 {
-    class Program
+
+    class SpinLock
     {
-        static void Main(string[] args)
+        volatile int _locked = 0;
+
+        public void Acquire()
         {
-
-        }
-    }
-
-        /*  DeadLock 발생 조건 확인 및 적립
-    // 각각의 스레드에서 서로를 호출하는 상황 연출
-    // 서로를 호출하는 상황에서 Lock이 걸려있어 DeadLock이 발생하는 것을 확인할 수 있다.
-    class SessionManager
-    {
-        static object _lock = new object();
-
-        public static void Test()
-        {
-            lock (_lock)
+            // 원래는 0이었는데 1로 치환한다.
+            // 만약 다른 친구가 1로 치환했다면 계속 반복한다.
+            // 즉, SpinLock을 통하여 예외처리 느낌으로 처리할 수 있다.
+            while (true)
             {
-                UserManager.TestUser();
+                // 1번째 방법
+                // _locked를 1로 변경한다.
+                //int original = Interlocked.Exchange(ref _locked, 1);
+                //if (original == 0)
+                //    break;
+
+                // 2번째 방법 - CAS Compare-And-Swap
+                // 조건 - _locked를 비교하여 0이라면 1로 치환
+                int expected = 0; // 예상한 값
+                int desired = 1; // 예상한 값이 맞다면 바꿀 값
+
+                //int original = Interlocked.CompareExchange(ref _locked, 1, 0);
+                //if (original == 0)
+                if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
+                    break;
             }
         }
 
-        public static void TestSession()
+        public void Release()
         {
-            lock (_lock)
-            {
-            }
-        }
-    }
-
-    class UserManager
-    {
-        static object _lock = new object();
-
-        public static void Test()
-        {
-            lock (_lock)
-            {
-                SessionManager.TestSession();
-            }
-        }
-
-        public static void TestUser() 
-        {
-            lock (_lock)
-            {
-                
-            }
+            _locked = 0;
         }
     }
 
     class Program
     {
-        static int number = 0;
-        static object _obj = new object();
+        static int _num = 0;
+        static SpinLock _lock = new SpinLock();
 
         static void Thread_1()
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 1000000; i++)
             {
-
-                SessionManager.Test();
-
-                // DeadLock 발생 조건
-                // Enter와 Exit가 걸려있을 때 조건으로 return을 걸어놓으면
-                // DeadLock 발생 확률이 있으므로 잘 캐치해야 한다.
-
-                // 이런 경우 try catch finally를 사용하여 예외처리를 해주어야 한다.
-                // finally는 무조건 한번은 실행하기 때문
-
-                // 아래의 코드와 같이 직접 Enter, Exit를 사용하는 것 보다는
-                // lock을 사용하는 것이 좋다. (내부적으로 Enter, Exit를 한다.
-                // lock (_obj)
-                // {
-                //    number++;
-                // }
-
-                // 먼저 점유 (잠금)
-                // 문을 잠그면 잠금 해제 전까지 다른 쓰레드에서 기다린다.
-                // 즉, 상호 배제(Mutual Exclusion)를 보장한다.
-                //Monitor.Enter(_obj);
-                //number++;
-                // 잠금 해제
-                //Monitor.Exit(_obj);
+                _lock.Acquire();
+                _num++;
+                _lock.Release();
             }
         }
 
         static void Thread_2()
         {
-            for (int i = 0; i < 10; i++)
+            for (int i = 0; i < 1000000; i++)
             {
-                UserManager.Test();
-
-                // 먼저 점유
-                // Monitor.Enter(_obj);
-                // number--;
-                // Monitor.Exit(_obj);
+                _lock.Acquire();
+                _num--;
+                _lock.Release();
             }
         }
 
@@ -110,15 +70,123 @@ namespace Program
             Task t2 = new Task(Thread_2);
 
             t1.Start();
-
-            Thread.Sleep(100);
             t2.Start();
 
+            // Task가 끝날 때까지 대기
             Task.WaitAll(t1, t2);
 
-            Console.WriteLine(number);
+            Console.WriteLine(_num);
         }
     }
+
+        /*  DeadLock 발생 조건 확인 및 적립
+            // 각각의 스레드에서 서로를 호출하는 상황 연출
+            // 서로를 호출하는 상황에서 Lock이 걸려있어 DeadLock이 발생하는 것을 확인할 수 있다.
+            class SessionManager
+            {
+                static object _lock = new object();
+
+                public static void Test()
+                {
+                    lock (_lock)
+                    {
+                        UserManager.TestUser();
+                    }
+                }
+
+                public static void TestSession()
+                {
+                    lock (_lock)
+                    {
+                    }
+                }
+            }
+
+            class UserManager
+            {
+                static object _lock = new object();
+
+                public static void Test()
+                {
+                    lock (_lock)
+                    {
+                        SessionManager.TestSession();
+                    }
+                }
+
+                public static void TestUser() 
+                {
+                    lock (_lock)
+                    {
+                
+                    }
+                }
+            }
+
+            class Program
+            {
+                static int number = 0;
+                static object _obj = new object();
+
+                static void Thread_1()
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+
+                        SessionManager.Test();
+
+                        // DeadLock 발생 조건
+                        // Enter와 Exit가 걸려있을 때 조건으로 return을 걸어놓으면
+                        // DeadLock 발생 확률이 있으므로 잘 캐치해야 한다.
+
+                        // 이런 경우 try catch finally를 사용하여 예외처리를 해주어야 한다.
+                        // finally는 무조건 한번은 실행하기 때문
+
+                        // 아래의 코드와 같이 직접 Enter, Exit를 사용하는 것 보다는
+                        // lock을 사용하는 것이 좋다. (내부적으로 Enter, Exit를 한다.
+                        // lock (_obj)
+                        // {
+                        //    number++;
+                        // }
+
+                        // 먼저 점유 (잠금)
+                        // 문을 잠그면 잠금 해제 전까지 다른 쓰레드에서 기다린다.
+                        // 즉, 상호 배제(Mutual Exclusion)를 보장한다.
+                        //Monitor.Enter(_obj);
+                        //number++;
+                        // 잠금 해제
+                        //Monitor.Exit(_obj);
+                    }
+                }
+
+                static void Thread_2()
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+                        UserManager.Test();
+
+                        // 먼저 점유
+                        // Monitor.Enter(_obj);
+                        // number--;
+                        // Monitor.Exit(_obj);
+                    }
+                }
+
+                static void Main(string[] args)
+                {
+                    Task t1 = new Task(Thread_1);
+                    Task t2 = new Task(Thread_2);
+
+                    t1.Start();
+
+                    Thread.Sleep(100);
+                    t2.Start();
+
+                    Task.WaitAll(t1, t2);
+
+                    Console.WriteLine(number);
+                }
+            }
     */
 
         /*  경합조건에서 발생하는 문제점과 Interlocked를 활용한 해결
