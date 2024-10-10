@@ -5,13 +5,67 @@ namespace Program
 {
     class Program
     {
+        static void Main(string[] args)
+        {
+
+        }
+    }
+
+        /*  DeadLock 발생 조건 확인 및 적립
+    // 각각의 스레드에서 서로를 호출하는 상황 연출
+    // 서로를 호출하는 상황에서 Lock이 걸려있어 DeadLock이 발생하는 것을 확인할 수 있다.
+    class SessionManager
+    {
+        static object _lock = new object();
+
+        public static void Test()
+        {
+            lock (_lock)
+            {
+                UserManager.TestUser();
+            }
+        }
+
+        public static void TestSession()
+        {
+            lock (_lock)
+            {
+            }
+        }
+    }
+
+    class UserManager
+    {
+        static object _lock = new object();
+
+        public static void Test()
+        {
+            lock (_lock)
+            {
+                SessionManager.TestSession();
+            }
+        }
+
+        public static void TestUser() 
+        {
+            lock (_lock)
+            {
+                
+            }
+        }
+    }
+
+    class Program
+    {
         static int number = 0;
         static object _obj = new object();
 
         static void Thread_1()
         {
-            for (int i = 0; i < 100000; i++)
+            for (int i = 0; i < 10; i++)
             {
+
+                SessionManager.Test();
 
                 // DeadLock 발생 조건
                 // Enter와 Exit가 걸려있을 때 조건으로 return을 걸어놓으면
@@ -21,11 +75,11 @@ namespace Program
                 // finally는 무조건 한번은 실행하기 때문
 
                 // 아래의 코드와 같이 직접 Enter, Exit를 사용하는 것 보다는
-                // lock을 사용하는 것이 좋다. (내부적으로 Enter, Exit를 한다.)
-                lock (_obj)
-                {
-                    number++;
-                }
+                // lock을 사용하는 것이 좋다. (내부적으로 Enter, Exit를 한다.
+                // lock (_obj)
+                // {
+                //    number++;
+                // }
 
                 // 먼저 점유 (잠금)
                 // 문을 잠그면 잠금 해제 전까지 다른 쓰레드에서 기다린다.
@@ -39,14 +93,14 @@ namespace Program
 
         static void Thread_2()
         {
-            for (int i = 0; i < 100000; i++)
+            for (int i = 0; i < 10; i++)
             {
+                UserManager.Test();
+
                 // 먼저 점유
-                Monitor.Enter(_obj);
-
-                number--;
-
-                Monitor.Exit(_obj);
+                // Monitor.Enter(_obj);
+                // number--;
+                // Monitor.Exit(_obj);
             }
         }
 
@@ -56,12 +110,16 @@ namespace Program
             Task t2 = new Task(Thread_2);
 
             t1.Start();
+
+            Thread.Sleep(100);
             t2.Start();
 
             Task.WaitAll(t1, t2);
 
             Console.WriteLine(number);
         }
+    }
+    */
 
         /*  경합조건에서 발생하는 문제점과 Interlocked를 활용한 해결
             // 경합조건
@@ -301,5 +359,5 @@ namespace Program
                 }
         */
 
-    }
+    // }
 }
