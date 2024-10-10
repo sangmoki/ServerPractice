@@ -5,69 +5,121 @@ namespace Program
 {
     class Program
     {
-        // 메모리 배리어 -> 멀티 쓰레드 환경에서 발생하는 순서의 가시성(인식)을 늘려 뒤바뀜 문제 해결
-        // A) 코드 재배치 억제 -> Memory Barrier
-        // B) 가시성 -> Volatile
+        // 경합조건
+        // 여러 쓰레드가 하나의 자원을 사용할 때 발생하는 문제
+        // 순서가 보장되지 않는다.
 
-        // 1) Full Memory Barrier - (ASM : MFENCE, C#: Thread.MemoryBarrier) : Store/Load가 모두 재배치 되지 않도록 한다.
-        // 2) Store Memory Barrier - (ASM : SFENCE) : Store만 재배치 되지 않도록 한다.
-        // 3) Load Memory Barrier - (ASM : LFENCE) : Load만 재배치 되지 않도록 한다.
-        // 가시성 -> 변수를 읽을 때 메모리에서 읽어오도록 한다.
+        static int number = 0;
 
-        // Store를 사용하면 물내림 작업 (Memory Barrier)를 사용
-        // Load를 사용하기 이전에 물내림 작업 (Memory Barrier)를 사용
-        // 즉, Store를 사용하면 최신화를 해주어야 하고
-        // Load 전에 최신화가 되었는지 확인해야 한다.
-
-        static int x = 0;
-        static int y = 0;
-        static int r1 = 0;
-        static int r2 = 0;
-
+        // atomic = 원자성 -> 더이상 분리될 수 없는 최소의 원소단위
         static void Thread_1()
         {
-            y = 1; // Store y
+            for (int i = 0; i < 100000; i++)
+            {
+                // 원자성을 이용하여 순서를 보장
+                // 아래의 코드를 Increment로 대체 -> 원자성을 이용하여 순서를 보장
+                // ref가 붙은 이유는 number의 값이 뭔지는 모르지만 참조하여 무조건 1 늘려라 라는 명령
+                int afterValue = Interlocked.Increment(ref number);
 
-            // 메모리 배리어
-            // y와 x 사이에 선을 그어 코드 재배치를 억제한다.
-            Thread.MemoryBarrier();
-            r1 = x; // Load x
-        }        
+                /*number++;
+                int temp = number; // 0
+                temp += 1; // 1
+                number = temp; // 1*/
+            }
+        }
 
         static void Thread_2()
         {
-            x = 1; // Store x
+            for (int i = 0; i < 100000; i++)
+            {
+                Interlocked.Decrement(ref number);
 
-            Thread.MemoryBarrier();
-            r2 = y; // Load y
+                /*number--;
+                int temp = number; // 0
+                temp -= 1; // -1
+                number = temp; // -1*/
+            }
         }
 
         static void Main(string[] args)
         {
-            int count = 0;
-            while(true)
+            Task t1 = new Task(Thread_1);
+            Task t2 = new Task(Thread_2);
+
+            // 원자(atomic, volatile) 단위로 덧셈 뺄셈을 진행하기 때문에 순서가 보장된다.
+            t1.Start();
+            t2.Start();
+
+            Task.WaitAll(t1, t2);
+
+            Console.WriteLine(number);
+        }
+
+        /* 멀티 쓰레드 환경에서의 문제점과 해결법 Memory Barrier
+            // 메모리 배리어 -> 멀티 쓰레드 환경에서 발생하는 순서의 가시성(인식)을 늘려 뒤바뀜 문제 해결
+            // A) 코드 재배치 억제 -> Memory Barrier
+            // B) 가시성 -> Volatile
+
+            // 1) Full Memory Barrier - (ASM : MFENCE, C#: Thread.MemoryBarrier) : Store/Load가 모두 재배치 되지 않도록 한다.
+            // 2) Store Memory Barrier - (ASM : SFENCE) : Store만 재배치 되지 않도록 한다.
+            // 3) Load Memory Barrier - (ASM : LFENCE) : Load만 재배치 되지 않도록 한다.
+            // 가시성 -> 변수를 읽을 때 메모리에서 읽어오도록 한다.
+
+            // Store를 사용하면 물내림 작업 (Memory Barrier)를 사용
+            // Load를 사용하기 이전에 물내림 작업 (Memory Barrier)를 사용
+            // 즉, Store를 사용하면 최신화를 해주어야 하고
+            // Load 전에 최신화가 되었는지 확인해야 한다.
+
+            static int x = 0;
+            static int y = 0;
+            static int r1 = 0;
+            static int r2 = 0;
+
+            static void Thread_1()
             {
-                count++;
-                x = y = r1 = r2 = 0;
+                y = 1; // Store y
 
-                // 멀티 쓰레드 환경
-                Task t1 = new Task(Thread_1);
-                Task t2 = new Task(Thread_2);
-                t1.Start();
-                t2.Start();
+                // 메모리 배리어
+                // y와 x 사이에 선을 그어 코드 재배치를 억제한다.
+                Thread.MemoryBarrier();
+                r1 = x; // Load x
+            }        
 
-                Task.WaitAll(t1, t2);
+            static void Thread_2()
+            {
+                x = 1; // Store x
 
-                // 멀티쓰레드 환경에서는 
-                // 하드웨어 자체에서 최적화를 하기 때문에 -? 순서를 뒤바꾸기도 한다.
-                // 그래서 r1, r2가 0이 나올 수 있다.
-                if (r1 == 0 && r2 == 0)
-                    break;
+                Thread.MemoryBarrier();
+                r2 = y; // Load y
             }
 
-            Console.WriteLine($"{count}번 만에 빠져나옴");
+            static void Main(string[] args)
+            {
+                int count = 0;
+                while(true)
+                {
+                    count++;
+                    x = y = r1 = r2 = 0;
 
-        }
+                    // 멀티 쓰레드 환경
+                    Task t1 = new Task(Thread_1);
+                    Task t2 = new Task(Thread_2);
+                    t1.Start();
+                    t2.Start();
+
+                    Task.WaitAll(t1, t2);
+
+                    // 멀티쓰레드 환경에서는 
+                    // 하드웨어 자체에서 최적화를 하기 때문에 -? 순서를 뒤바꾸기도 한다.
+                    // 그래서 r1, r2가 0이 나올 수 있다.
+                    if (r1 == 0 && r2 == 0)
+                        break;
+                }
+
+                Console.WriteLine($"{count}번 만에 빠져나옴");
+
+            }
+        */
 
         /* 캐시 테스트 전 2차배열 하드코딩
                 static void Main(string[] args)
