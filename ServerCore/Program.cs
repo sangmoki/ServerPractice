@@ -5,26 +5,35 @@ namespace Program
 {
     class Program
     {
-        // 경합조건
-        // 여러 쓰레드가 하나의 자원을 사용할 때 발생하는 문제
-        // 순서가 보장되지 않는다.
-
         static int number = 0;
+        static object _obj = new object();
 
-        // atomic = 원자성 -> 더이상 분리될 수 없는 최소의 원소단위
         static void Thread_1()
         {
             for (int i = 0; i < 100000; i++)
             {
-                // 원자성을 이용하여 순서를 보장
-                // 아래의 코드를 Increment로 대체 -> 원자성을 이용하여 순서를 보장
-                // ref가 붙은 이유는 number의 값이 뭔지는 모르지만 참조하여 무조건 1 늘려라 라는 명령
-                int afterValue = Interlocked.Increment(ref number);
 
-                /*number++;
-                int temp = number; // 0
-                temp += 1; // 1
-                number = temp; // 1*/
+                // DeadLock 발생 조건
+                // Enter와 Exit가 걸려있을 때 조건으로 return을 걸어놓으면
+                // DeadLock 발생 확률이 있으므로 잘 캐치해야 한다.
+
+                // 이런 경우 try catch finally를 사용하여 예외처리를 해주어야 한다.
+                // finally는 무조건 한번은 실행하기 때문
+
+                // 아래의 코드와 같이 직접 Enter, Exit를 사용하는 것 보다는
+                // lock을 사용하는 것이 좋다. (내부적으로 Enter, Exit를 한다.)
+                lock (_obj)
+                {
+                    number++;
+                }
+
+                // 먼저 점유 (잠금)
+                // 문을 잠그면 잠금 해제 전까지 다른 쓰레드에서 기다린다.
+                // 즉, 상호 배제(Mutual Exclusion)를 보장한다.
+                //Monitor.Enter(_obj);
+                //number++;
+                // 잠금 해제
+                //Monitor.Exit(_obj);
             }
         }
 
@@ -32,12 +41,12 @@ namespace Program
         {
             for (int i = 0; i < 100000; i++)
             {
-                Interlocked.Decrement(ref number);
+                // 먼저 점유
+                Monitor.Enter(_obj);
 
-                /*number--;
-                int temp = number; // 0
-                temp -= 1; // -1
-                number = temp; // -1*/
+                number--;
+
+                Monitor.Exit(_obj);
             }
         }
 
@@ -46,7 +55,6 @@ namespace Program
             Task t1 = new Task(Thread_1);
             Task t2 = new Task(Thread_2);
 
-            // 원자(atomic, volatile) 단위로 덧셈 뺄셈을 진행하기 때문에 순서가 보장된다.
             t1.Start();
             t2.Start();
 
@@ -54,6 +62,68 @@ namespace Program
 
             Console.WriteLine(number);
         }
+
+        /*  경합조건에서 발생하는 문제점과 Interlocked를 활용한 해결
+            // 경합조건
+            // 여러 쓰레드가 하나의 자원을 사용할 때 발생하는 문제
+            // 순서가 보장되지 않는다.
+            // -> 순서를 보장하기 위해 lock을 사용한다.
+
+            // Interlocked의 장점
+            // 1. 원자성을 보장
+            // 2. 순서를 보장
+            // 3. 속도가 빠르다.
+            // Interlocked의 단점 
+            // -> 1.원자성을 보장하기 때문에 속도가 빠르지만 느리다.
+
+            static int number = 0;
+
+            // atomic = 원자성 -> 더이상 분리될 수 없는 최소의 원소단위
+            static void Thread_1()
+            {
+                for (int i = 0; i < 100000; i++)
+                {
+                    // 원자성을 이용하여 순서를 보장
+                    // 아래의 코드를 Increment로 대체 -> 원자성을 이용하여 순서를 보장
+                    // ref가 붙은 이유는 number의 값이 뭔지는 모르지만 참조하여 무조건 1 늘려라 라는 명령
+
+
+                    int afterValue = Interlocked.Increment(ref number);
+
+                    //number++;
+                    //int temp = number; // 0
+                    //temp += 1; // 1
+                    //number = temp; // 1
+                }
+            }
+
+            static void Thread_2()
+            {
+                for (int i = 0; i < 100000; i++)
+                {
+                    Interlocked.Decrement(ref number);
+
+                    //number--;
+                    //int temp = number; // 0
+                    //temp -= 1; // -1
+                    //number = temp; // -1
+                }
+            }
+
+            static void Main(string[] args)
+            {
+                Task t1 = new Task(Thread_1);
+                Task t2 = new Task(Thread_2);
+
+                // 원자(atomic, volatile) 단위로 덧셈 뺄셈을 진행하기 때문에 순서가 보장된다.
+                t1.Start();
+                t2.Start();
+
+                Task.WaitAll(t1, t2);
+
+                Console.WriteLine(number);
+            }
+        */
 
         /* 멀티 쓰레드 환경에서의 문제점과 해결법 Memory Barrier
             // 메모리 배리어 -> 멀티 쓰레드 환경에서 발생하는 순서의 가시성(인식)을 늘려 뒤바뀜 문제 해결
