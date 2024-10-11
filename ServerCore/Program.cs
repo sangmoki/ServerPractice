@@ -30,6 +30,10 @@ namespace Program
                 //if (original == 0)
                 if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
                     break;
+
+                // Context Switing
+                Thread.Sleep();
+                Thread.Yield();
             }
         }
 
