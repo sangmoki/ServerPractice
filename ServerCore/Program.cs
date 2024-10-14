@@ -31,9 +31,10 @@ namespace Program
                 if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
                     break;
 
-                // Context Switing
-                Thread.Sleep();
-                Thread.Yield();
+                // Context Switing의 3가지 방법
+                Thread.Sleep(1); // ms 단위로 휴식한다.(무조건)
+                Thread.Sleep(0); // 조건부 양보 -> 나보다 우선순위가 높은 애들한테 양보 -> 우선순위가 같거나 낮으면 그냥 실행.
+                Thread.Yield(); // 관대한 양보 -> 조건 없이 양보 -> 지금 실행 가능한 쓰레드 있으면 실행 -> 없으면 다시 실행
             }
         }
 
