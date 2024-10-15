@@ -1,54 +1,63 @@
 ﻿using System;
 using System.Threading;
 
-namespace Program
+namespace ServerCore
 {
-
     class Program
     {
-        // Lock을 이용하는 방법
-        // 다만 상호배제성을 띈다.
-        // 1. 근성 - 계속 반복을 돌며 Try하는 방법
-        static object _lock = new object();
-        // 2. 양보 - 다른 쓰레드에게 순서를 양보 후 Try하는 방법
-        static SpinLock _lock2 = new SpinLock();
-        // 3. 갑질 - 다른 쓰레드를 호출하여 대신 Try하는 방법
-        static Mutext _lock3 = new Mutext();
-        // 4. 읽기 쓰기 잠금 - 읽기와 쓰기를 나누어 잠금하는 방법
-        ReaderWriterLockSlim _lock4 = new ReaderWriterLockSlim();
-
-        class Reward
-        {
-
-        }
-
-
-        static Reward GetRewardById(int id)
-        {
-            // 읽기
-            _lock4.EnterReadLock();
-
-            _lock4.ExitReadLock();
-
-            return null;
-        }
-
-        static void AddReward(Reward reward)
-        {
-            _lock4.EnterWriteLock();
-
-            _lock4.ExitWriteLock();
-        }
-
         static void Main(string[] args)
         {
-            lock (_lock)
-            {
-
-            }
-
+            
         }
     }
+
+    /* Lock을 이용하는 방법 3가지와 ReaderWriterLock
+            class Program
+            {
+                // Lock을 이용하는 방법
+                // 다만 상호배제성을 띈다.
+                // 1. 근성 - 계속 반복을 돌며 Try하는 방법
+                static object _lock = new object();
+                // 2. 양보 - 다른 쓰레드에게 순서를 양보 후 Try하는 방법
+                static SpinLock _lock2 = new SpinLock();
+                // 3. 갑질 - 다른 쓰레드를 호출하여 대신 Try하는 방법
+                static Mutext _lock3 = new Mutext();
+                // 4. 읽기 쓰기 잠금 - 읽기와 쓰기를 나누어 잠금하는 방법
+                ReaderWriterLockSlim _lock4 = new ReaderWriterLockSlim();
+
+                class Reward
+                {
+
+                }
+
+
+                static Reward GetRewardById(int id)
+                {
+                    // 읽기
+                    _lock4.EnterReadLock();
+
+                    _lock4.ExitReadLock();
+
+                    return null;
+                }
+
+                static void AddReward(Reward reward)
+                {
+                    _lock4.EnterWriteLock();
+
+                    _lock4.ExitWriteLock();
+                }
+
+                static void Main(string[] args)
+                {
+                    lock (_lock)
+                    {
+
+                    }
+
+                }
+            }
+        */
 
     /*  Event보다 효과적인 Mutex 사용
         class Program
