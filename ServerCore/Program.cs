@@ -3,46 +3,64 @@ using System.Threading;
 
 namespace Program
 {
-   
+
     class Program
     {
-        static int _num = 0;
-        static Mutex _lock = new Mutex(); // 커널 동기화 객체
-
-        static void Thread_1()
-        {
-            for (int i = 0; i < 100000; i++)
-            {
-                _lock.WaitOne();
-                _num++;
-                _lock.ReleaseMutex();
-            }
-        }
-
-        static void Thread_2()
-        {
-            for (int i = 0; i < 100000; i++)
-            {
-                _lock.WaitOne();
-                _num--;
-                _lock.ReleaseMutex();
-            }
-        }
+        // Lock을 이용하는 3가지 방법
+        // 1. 근성 - 계속 반복을 돌며 Try하는 방법
+        // 2. 양보 - 다른 쓰레드에게 순서를 양보 후 Try하는 방법
+        // 3. 갑질 - 다른 쓰레드를 호출하여 대신 Try하는 방법
 
         static void Main(string[] args)
         {
-            Task t1 = new Task(Thread_1);
-            Task t2 = new Task(Thread_2);
 
-            t1.Start();
-            t2.Start();
-
-            // Task가 끝날 때까지 대기
-            Task.WaitAll(t1, t2);
-
-            Console.WriteLine(_num);
         }
     }
+
+    /*  Event보다 효과적인 Mutex 사용
+        class Program
+        {
+            static int _num = 0;
+
+            // 기존 Event는 bool 값만을 가지고 있다면,
+            // Mutex는 커널 동기화 객체를 사용하여 여러 쓰레드가 동시에 접근하지 못하도록 한다.
+            static Mutex _lock = new Mutex(); // 커널 동기화 객체
+
+            static void Thread_1()
+            {
+                for (int i = 0; i < 100000; i++)
+                {
+                    _lock.WaitOne();
+                    _num++;
+                    _lock.ReleaseMutex();
+                }
+            }
+
+            static void Thread_2()
+            {
+                for (int i = 0; i < 100000; i++)
+                {
+                    _lock.WaitOne();
+                    _num--;
+                    _lock.ReleaseMutex();
+                }
+            }
+
+            static void Main(string[] args)
+            {
+                Task t1 = new Task(Thread_1);
+                Task t2 = new Task(Thread_2);
+
+                t1.Start();
+                t2.Start();
+
+                // Task가 끝날 때까지 대기
+                Task.WaitAll(t1, t2);
+
+                Console.WriteLine(_num);
+            }
+        }
+    */
 
     /*  Lock Event WaitOne, Set, Reset
     class Lock
