@@ -5,9 +5,37 @@ namespace ServerCore
 {
     class Program
     {
+        // 고치는 순간 다른 친구들에게도 영향을 줄 수 있기 때문에 ThreadLocal 이용한다.
+        // static string ThreadName;
+
+        // ThreadLocal은 쓰레드마다 고유한 공간을 제공해준다. 
+        static ThreadLocal<string> ThreadName = new ThreadLocal<string>(() =>
+        {
+            return $"My Name is {Thread.CurrentThread.ManagedThreadId}";
+        });
+
+        static void WhoAmI()
+        {
+            bool repeat = ThreadName.IsValueCreated;
+
+            if (repeat)
+                // 이미 만들어져 있으면 true로 반환
+                Console.WriteLine(ThreadName.Value + " (repeat)");
+            else
+                // 한번도 만든적 없으면 fasle로 반환
+                Console.WriteLine(ThreadName.Value);
+        }
+
         static void Main(string[] args)
         {
-            
+            ThreadPool.SetMinThreads(1, 1);
+            ThreadPool.SetMaxThreads(3, 3);
+
+            // 기존 Task로 사용하던 방법에서 Parallel로 사용하는 방법
+            // Invoke를 통하여 task를 여러번 사용할 수 있다.
+            Parallel.Invoke(WhoAmI, WhoAmI, WhoAmI, WhoAmI, WhoAmI, WhoAmI, WhoAmI);
+
+            ThreadName.Dispose();
         }
     }
 
